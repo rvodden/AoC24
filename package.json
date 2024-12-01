@@ -1,0 +1,27 @@
+{
+  "name": "advent-of-code-2024",
+  "version": "1.0.0",
+  "description": "Advent of Code 2024",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "bun src/index.ts",
+    "build": "rm -rf dist && tsc",
+    "test": "vitest",
+    "start": "node dist/index.js",
+    "init-day": "bun src/scripts/initNewDay.ts",
+    "lint": "eslint src",
+    "lint:fix": "eslint --fix src"
+  },
+  "author": "Richard Vodden",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.1",
+    "@typescript-eslint/eslint-plugin": "^6.13.1",
+    "@typescript-eslint/parser": "^6.13.1",
+    "eslint": "^8.54.0",
+    "eslint-config-prettier": "^9.0.0",
+    "prettier": "^3.1.0",
+    "typescript": "^5.3.2",
+    "vitest": "^0.34.6"
+  }
+}
