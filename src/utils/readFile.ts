@@ -1,12 +1,5 @@
-import { readFile } from 'fs';
+import { readFileSync } from 'fs';
 
 export default (inputFilePath: string) => {
-  return new Promise<string>((resolve, reject) => {
-    readFile(inputFilePath, 'utf-8', (err, data) => {
-      if (err) {
-        reject(err);
-      }
-      resolve(data);
-    });
-  });
+  return readFileSync(inputFilePath, { encoding: 'utf-8', flag: 'r' });
 };

@@ -11,7 +11,7 @@ function parse(input: string): number[][] {
     .filter((n) => n.length != 0);
 }
 
-function allEqual<T>(arr: Array<T>): boolean {
+function allEqual<T>(arr: T[]): boolean {
   return arr.every((val) => val === arr[0]);
 }
 
@@ -29,7 +29,7 @@ function* pairwise<T>(iterable: Iterable<T>): Generator<[T, T], void> {
   }
 }
 
-function isSafe(report: Array<number>) : boolean {
+function isSafe(report: number[]): boolean {
   const differences = pairwise(report)
     .map(([x, y]) => x - y)
     .toArray();
@@ -42,18 +42,21 @@ function isSafe(report: Array<number>) : boolean {
   );
 }
 
-function isSafeP2(report: Array<number>): boolean {
+function isSafeP2(report: number[]): boolean {
   if (isSafe(report)) {
     return true;
   }
 
-  return report.map((_, idx, arr) => arr.toSpliced(idx, 1)).map(isSafe).some(Boolean);
+  return report
+    .map((_, idx, arr) => arr.toSpliced(idx, 1))
+    .map(isSafe)
+    .some(Boolean);
 }
 
 const part1 = (input: string) => {
   const reports = parse(input);
   const result = reports.map(isSafe).filter(Boolean).length;
-  return `${result}`;
+  return result.toString();
 };
 
 const expectedFirstSolution = '2';
@@ -61,7 +64,7 @@ const expectedFirstSolution = '2';
 const part2 = (input: string) => {
   const reports = parse(input);
   const result = reports.map(isSafeP2).filter(Boolean).length;
-  return `${result}`;
+  return result.toString();
 };
 
 const expectedSecondSolution = '4';

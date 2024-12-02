@@ -1,8 +1,10 @@
-type Puzzle = {
-  part1: (input: string) => string;
-  expectedFirstSolution: string;
-  part2: (input: string) => string;
-  expectedSecondSolution: string;
-};
+type PuzzleFunc = (input:string) => string;
 
-export default Puzzle;
+interface Puzzle {
+  part1: PuzzleFunc;
+  expectedFirstSolution: string;
+  part2: PuzzleFunc;
+  expectedSecondSolution: string;
+}
+
+export {Puzzle, PuzzleFunc};

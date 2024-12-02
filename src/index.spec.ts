@@ -1,7 +1,7 @@
-import { readdirSync } from 'fs';
+import { readdirSync, readFileSync } from 'fs';
 import { describe, expect, it } from 'vitest';
-import readFile from './utils/readFile';
-import Puzzle from './types/Puzzle';
+
+import { Puzzle } from './types/Puzzle.js';
 
 describe('AoC test runner', () => {
   const dirs = readdirSync('./src/days', { withFileTypes: true })
@@ -9,25 +9,27 @@ describe('AoC test runner', () => {
     .map((dirent) => dirent.name);
 
   for (const day of dirs) {
-    it(`Tests day ${day}`, async () => {
+    describe(`Tests day ${day}`, async () => {
       let example = '';
       const puzzleName = day;
       try {
         const puzzlePath = `src/days/${puzzleName}`;
-        example = await readFile(`${puzzlePath}/example.txt`);
+        example = readFileSync(`${puzzlePath}/example.txt`, { encoding: 'utf-8', flag: 'r' });
       } catch (error) {
         console.error(error);
         process.exit(1);
       }
-      const {
-        part1,
-        expectedFirstSolution,
-        part2,
-        expectedSecondSolution,
-      }: Puzzle = await import(`./days/${puzzleName}/Puzzle`);
 
-      expect(part1(example)).toBe(expectedFirstSolution);
-      expect(part2(example)).toBe(expectedSecondSolution);
+      const { part1, expectedFirstSolution, part2, expectedSecondSolution } = await import(
+        `./days/${puzzleName}/Puzzle.ts`
+      ) as Puzzle;
+
+      it.each([
+        { func: part1, expected: expectedFirstSolution },
+        { func: part2, expected: expectedSecondSolution },
+      ])('$func.name', ({ func, expected }) => {
+        expect(func(example)).toBe(expected);
+      });
     });
   }
 });
