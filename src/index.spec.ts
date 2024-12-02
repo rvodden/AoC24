@@ -10,13 +10,11 @@ describe('AoC test runner', () => {
 
   for (const day of dirs) {
     it(`Tests day ${day}`, async () => {
-      let exampleOneInput = '';
-      let exampleTwoInput = '';
+      let example = '';
       const puzzleName = day;
       try {
         const puzzlePath = `src/days/${puzzleName}`;
-        exampleOneInput = await readFile(`${puzzlePath}/example-test-1.txt`);
-        exampleTwoInput = await readFile(`${puzzlePath}/example-test-2.txt`);
+        example = await readFile(`${puzzlePath}/example.txt`);
       } catch (error) {
         console.error(error);
         process.exit(1);
@@ -28,8 +26,8 @@ describe('AoC test runner', () => {
         expectedSecondSolution,
       }: Puzzle = await import(`./days/${puzzleName}/Puzzle`);
 
-      expect(part1(exampleOneInput)).toBe(expectedFirstSolution);
-      expect(part2(exampleTwoInput)).toBe(expectedSecondSolution);
+      expect(part1(example)).toBe(expectedFirstSolution);
+      expect(part2(example)).toBe(expectedSecondSolution);
     });
   }
 });
