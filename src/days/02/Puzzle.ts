@@ -29,10 +29,24 @@ function* pairwise<T>(iterable: Iterable<T>): Generator<[T, T], void> {
   }
 }
 
+function getMethods(obj) {
+  var result = [];
+  for (var id in obj) {
+    try {
+      if (typeof(obj[id]) == "function") {
+        result.push(id + ": " + obj[id].toString());
+      }
+    } catch (err) {
+      result.push(id + ": inaccessible");
+    }
+  }
+  return result;
+}
+
 function isSafe(report: number[]): boolean {
-  const differences = pairwise(report)
-    .map(([x, y]) => x - y)
-    .toArray();
+  const pairs = pairwise(report).toArray();
+  const differences = pairs.map(([x, y]) => x - y);
+
   return (
     allEqual(differences.map((x) => x > 0)) &&
     differences.every((x) => {

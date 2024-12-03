@@ -20,6 +20,7 @@ RUN chsh ${USERNAME} -s /usr/bin/zsh
 
 USER $USERNAME
 RUN sh -c "$(wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O -)"
+RUN curl -fsSL https://bun.sh/install | bash
 RUN echo "export NVM_DIR=${NVM_DIR}"                                         >> "$HOME/.bashrc"
 RUN echo '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm' >> "$HOME/.bashrc"
 RUN echo '[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"' >> "$HOME/.bashrc"
