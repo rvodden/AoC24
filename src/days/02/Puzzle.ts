@@ -69,4 +69,4 @@ const part2 = (input: string) => {
 
 const expectedSecondSolution = '4';
 
-export { part1, expectedFirstSolution, part2, expectedSecondSolution };
+export { part1, expectedFirstSolution, part2, expectedSecondSolution, pairwise };
