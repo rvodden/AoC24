@@ -1,124 +1,119 @@
-
 enum StateType {
   ExpectingCharacter,
   ExpectingDigitOrComma,
-  ExpectingDigitOrBracket
+  ExpectingDigitOrBracket,
 }
 
-interface State {
-  state: StateType,
-  expectedCharacter: string
+class State {
+  state: StateType;
+  expectedCharacter: string;
+  currentInstruction: Instruction;
+  instructions: Instruction[];
+
+  constructor() {
+    this.state = StateType.ExpectingCharacter;
+    this.expectedCharacter = 'm';
+    this.currentInstruction = new Instruction();
+    this.instructions = [];
+  }
+
+  static fromState(state: State): State {
+    const retstate = new State();
+    retstate.instructions = state.instructions;
+    return retstate;
+  }
 }
 
 class Instruction {
-  lhs: number
-  rhs: number
-  
+  lhs: number;
+  rhs: number;
+
   constructor() {
     this.lhs = 0;
     this.rhs = 0;
   }
-
 }
 
+const handleMulCharacter = (character: string, state: State): State => {
+  const retstate = State.fromState(state);
+  switch (character) {
+    case 'm':
+      retstate.expectedCharacter = 'u';
+      break;
+    case 'u':
+      retstate.expectedCharacter = 'l';
+      break;
+    case 'l':
+      retstate.expectedCharacter = '(';
+      break;
+    case '(':
+      retstate.state = StateType.ExpectingDigitOrComma;
+      retstate.expectedCharacter = '';
+      break;
+  }
+  return retstate;
+};
+
+const handleDigitOrComma = (character: string, state: State): State => {
+  if (character == ',') {
+    state.state = StateType.ExpectingDigitOrBracket;
+    state.expectedCharacter = '';
+    return state;
+  }
+
+  //is digit
+  if (character >= '0' && character <= '9') {
+    state.currentInstruction.lhs = state.currentInstruction.lhs * 10 + parseInt(character);
+    if (state.currentInstruction.lhs <= 999) {
+      return state;
+    }
+  }
+  return State.fromState(state);
+};
+
+const handleDigitOrBracket = (character: string, state: State): State => {
+  if (character == ')') {
+    const currentInstruction = state.currentInstruction;
+    state = State.fromState(state);
+    state.instructions.push(currentInstruction);
+    return state;
+  }
+
+  //is digit
+  if (character >= '0' && character <= '9') {
+    state.currentInstruction.rhs = state.currentInstruction.rhs * 10 + parseInt(character);
+    if (state.currentInstruction.rhs <= 999) {
+      return state;
+    }
+  }
+
+  return State.fromState(state);
+};
+
 const part1 = (input: string) => {
-  const instructions: Instruction[] = [];
-  
-  const defaultState: State = {
-    state: StateType.ExpectingCharacter,
-    expectedCharacter: 'm'
-  };
+  let currentState = new State();
 
-  let currentState = defaultState;
-  
-  let currentInstruction = new Instruction();
-
-  [...input].forEach(character => {
-    console.log(`${character} : ${StateType[currentState.state]}, '${currentState.expectedCharacter}'`)
-    console.log(currentInstruction);
-    console.log(instructions)
-    switch(currentState.state) {
+  [...input].forEach((character) => {
+    // console.log(`${character} : ${StateType[currentState.state]}, '${currentState.expectedCharacter}'`)
+    // console.log(currentState.currentInstruction);
+    // console.log(currentState.instructions)
+    switch (currentState.state) {
       case StateType.ExpectingCharacter:
-        if (currentState.expectedCharacter != character) {
-          currentState = defaultState;
-          currentInstruction = new Instruction();
-          break;
-        }
-        switch(character) {
-          case 'm':
-            currentState = {
-              state: StateType.ExpectingCharacter,
-              expectedCharacter: 'u'
-            }
-            break;
-          case 'u':
-            currentState = {
-              state: StateType.ExpectingCharacter,
-              expectedCharacter: 'l'
-            }
-            break;
-          case 'l':
-            currentState = {
-              state: StateType.ExpectingCharacter,
-              expectedCharacter: '('
-            }
-            break;
-          case '(':
-            currentState = {
-              state: StateType.ExpectingDigitOrComma,
-              expectedCharacter: ""
-            }
-            break;
-        }
+        currentState = handleMulCharacter(character, currentState);
         break;
       case StateType.ExpectingDigitOrComma:
-        if (character == ",") {
-          currentState = {
-            state: StateType.ExpectingDigitOrBracket,
-            expectedCharacter: ""
-          }
-          break;
-        }
-
-        if (character >= '0' && character <= '9') { //is digit
-          currentInstruction.lhs = currentInstruction.lhs * 10 + parseInt(character);
-          if (currentInstruction.lhs > 999) {
-            currentState = defaultState
-            currentInstruction = new Instruction();
-          }
-          break;
-        }
-
-        currentState = defaultState;
-        currentInstruction = new Instruction();
+        currentState = handleDigitOrComma(character, currentState);
         break;
-      
-      case StateType.ExpectingDigitOrBracket:
-        if (character == ")") {
-          currentState = defaultState;
-          instructions.push(currentInstruction);
-          currentInstruction = new Instruction();
-          break;
-        }
 
-        if (character >= '0' && character <= '9') { //is digit
-          currentInstruction.rhs = currentInstruction.rhs * 10 + parseInt(character);
-          if (currentInstruction.rhs > 999) {
-            currentState = defaultState
-            currentInstruction = new Instruction();
-          }
-          break;
-        }
-        
-        currentState = defaultState;
-        currentInstruction = new Instruction();
+      case StateType.ExpectingDigitOrBracket:
+        currentState = handleDigitOrBracket(character, currentState);
         break;
     }
-  })
+  });
 
-  instructions.forEach(instruction => { console.log(`${instruction.lhs.toString()},${instruction.rhs.toString()}`) })
-  
-  return instructions.map(i => i.lhs * i.rhs).reduce((lhs, rhs) => lhs + rhs, 0)
+  // currentState.instructions.forEach(instruction => { console.log(`${instruction.lhs.toString()},${instruction.rhs.toString()}`) })
+
+  return currentState.instructions.map((i) => i.lhs * i.rhs).reduce((lhs, rhs) => lhs + rhs, 0);
 };
 
 const expectedFirstSolution = 161;

@@ -20,9 +20,9 @@ describe('AoC test runner', () => {
         process.exit(1);
       }
 
-      const { part1, expectedFirstSolution, part2, expectedSecondSolution } = await import(
+      const { part1, expectedFirstSolution, part2, expectedSecondSolution } = (await import(
         `./days/${puzzleName}/Puzzle.ts`
-      ) as Puzzle;
+      )) as Puzzle;
 
       it.each([
         { func: part1, expected: expectedFirstSolution },
