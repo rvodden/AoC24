@@ -1,25 +1,35 @@
 enum StateType {
-  ExpectingCharacter,
+  ExpectingStartingCharacter,
+  ExpectingMulCharacter,
   ExpectingDigitOrComma,
   ExpectingDigitOrBracket,
+
+  // P2 states
+
+  ExpectingDoOrDontCharacter,
+  ExpectingDoCharacter,
+  ExpectingDontCharacter
 }
 
 class State {
   state: StateType;
-  expectedCharacter: string;
+  previousCharacter: string;
   currentInstruction: Instruction;
   instructions: Instruction[];
+  multiplicationEnabled: boolean;
 
-  constructor() {
-    this.state = StateType.ExpectingCharacter;
-    this.expectedCharacter = 'm';
+  constructor(startingState = StateType.ExpectingStartingCharacter) {
+    this.state = startingState;
+    this.previousCharacter = '';
     this.currentInstruction = new Instruction();
     this.instructions = [];
+    this.multiplicationEnabled = true;
   }
 
-  static fromState(state: State): State {
-    const retstate = new State();
+  static fromState(state: State, startingState = StateType.ExpectingStartingCharacter): State {
+    const retstate = new State(startingState);
     retstate.instructions = state.instructions;
+    retstate.multiplicationEnabled = state.multiplicationEnabled;
     return retstate;
   }
 }
@@ -34,30 +44,42 @@ class Instruction {
   }
 }
 
-const handleMulCharacter = (character: string, state: State): State => {
-  const retstate = State.fromState(state);
+const handleStartingCharacter = (character: string, state: State): State => {
+    state.previousCharacter = character;
+    switch(character) {
+        case 'm':
+            state.state = StateType.ExpectingMulCharacter;
+            break;
+    }
+    return state;
+}
+
+const handleMulCharacter = (character: string, state: State, startingState = StateType.ExpectingStartingCharacter): State => {
+
+  const previousCharacter = state.previousCharacter;
+  state.previousCharacter = character;
+  state.state = StateType.ExpectingMulCharacter
   switch (character) {
-    case 'm':
-      retstate.expectedCharacter = 'u';
-      break;
     case 'u':
-      retstate.expectedCharacter = 'l';
-      break;
+      if (previousCharacter != 'm') break;    
+      return state;
     case 'l':
-      retstate.expectedCharacter = '(';
-      break;
+      if (previousCharacter != 'u') break;    
+      return state;
     case '(':
-      retstate.state = StateType.ExpectingDigitOrComma;
-      retstate.expectedCharacter = '';
-      break;
+      if (previousCharacter != 'l') break;    
+      state.state = StateType.ExpectingDigitOrComma;
+      return state;
   }
+
+  const retstate = State.fromState(state, startingState);
   return retstate;
 };
 
-const handleDigitOrComma = (character: string, state: State): State => {
+const handleDigitOrComma = (character: string, state: State, startingState = StateType.ExpectingStartingCharacter): State => {
   if (character == ',') {
     state.state = StateType.ExpectingDigitOrBracket;
-    state.expectedCharacter = '';
+    state.previousCharacter = '';
     return state;
   }
 
@@ -68,14 +90,16 @@ const handleDigitOrComma = (character: string, state: State): State => {
       return state;
     }
   }
-  return State.fromState(state);
+  return State.fromState(state, startingState);
 };
 
-const handleDigitOrBracket = (character: string, state: State): State => {
+const handleDigitOrBracket = (character: string, state: State, startingState = StateType.ExpectingStartingCharacter): State => {
   if (character == ')') {
     const currentInstruction = state.currentInstruction;
-    state = State.fromState(state);
-    state.instructions.push(currentInstruction);
+    state = State.fromState(state, startingState);
+    if (state.multiplicationEnabled) {
+        state.instructions.push(currentInstruction);
+    }
     return state;
   }
 
@@ -87,41 +111,144 @@ const handleDigitOrBracket = (character: string, state: State): State => {
     }
   }
 
-  return State.fromState(state);
+  return State.fromState(state, startingState);
 };
 
-const part1 = (input: string) => {
+
+const processPartOne = (input: string) : Instruction[] => {
   let currentState = new State();
 
   [...input].forEach((character) => {
-    // console.log(`${character} : ${StateType[currentState.state]}, '${currentState.expectedCharacter}'`)
-    // console.log(currentState.currentInstruction);
-    // console.log(currentState.instructions)
     switch (currentState.state) {
-      case StateType.ExpectingCharacter:
+      case StateType.ExpectingStartingCharacter:
+        currentState = handleStartingCharacter(character, currentState);
+        break;
+      case StateType.ExpectingMulCharacter:
         currentState = handleMulCharacter(character, currentState);
         break;
       case StateType.ExpectingDigitOrComma:
         currentState = handleDigitOrComma(character, currentState);
         break;
-
       case StateType.ExpectingDigitOrBracket:
         currentState = handleDigitOrBracket(character, currentState);
         break;
     }
   });
 
-  // currentState.instructions.forEach(instruction => { console.log(`${instruction.lhs.toString()},${instruction.rhs.toString()}`) })
+  return currentState.instructions;
+}
 
-  return currentState.instructions.map((i) => i.lhs * i.rhs).reduce((lhs, rhs) => lhs + rhs, 0);
+const part1 = (input: string) => {
+  const instructions = processPartOne(input);
+  return instructions.map((i) => i.lhs * i.rhs).reduce((lhs, rhs) => lhs + rhs, 0);
 };
 
 const expectedFirstSolution = 161;
 
+const handleStartingCharacterP2 = (character: string, state: State): State => {
+    state.previousCharacter = character;
+    switch(character) {
+        case 'm':
+            state.state = StateType.ExpectingMulCharacter;
+            break;
+        case 'd':
+            state.state = StateType.ExpectingDoOrDontCharacter;
+            break;
+    }
+    return state;
+}
+
+const handleDoOrDontCharacter = (character: string, state: State) => {
+    const previousCharacter = state.previousCharacter;
+    state.previousCharacter = character;
+    switch(character) {
+        case "o":
+            if (previousCharacter != "d") break;
+            return state;
+        case "(":
+            if (previousCharacter != "o") break;
+            state.state = StateType.ExpectingDoCharacter;
+            return state;
+        case "n":
+            if (previousCharacter != "o") break;
+            state.state = StateType.ExpectingDontCharacter;
+            return state;
+    }
+    const retstate = State.fromState(state);
+    return retstate;
+}
+
+const handleDoCharacter = (character: string, state: State) => {
+    const previousCharacter = state.previousCharacter;
+    state.previousCharacter = character;
+    const retstate = State.fromState(state);
+    switch(character) {
+        case ")":
+            if (previousCharacter != "(") break;
+            retstate.multiplicationEnabled = true;
+    }
+    return retstate;
+}
+
+const handleDontCharacter = (character: string, state: State) => {
+    const previousCharacter = state.previousCharacter;
+    state.previousCharacter = character;
+    const retstate = State.fromState(state);
+    switch(character) {
+        case "'":
+            if (previousCharacter != "n") break;
+            return state; 
+        case "t":
+            if (previousCharacter != "'") break;
+            return state;
+        case "(":
+            if (previousCharacter != "t") break;
+            return state;
+        case ")":
+            if (previousCharacter != "(") break;
+            retstate.multiplicationEnabled = false;
+            break;
+    }
+    return retstate;
+}
+
+const processPartTwo = (input: string) : Instruction[] => {
+  let currentState = new State();
+  currentState.state = StateType.ExpectingStartingCharacter;
+
+  [...input].forEach((character) => {
+    switch (currentState.state) {
+      case StateType.ExpectingStartingCharacter:
+        currentState = handleStartingCharacterP2(character, currentState);
+        break;
+      case StateType.ExpectingMulCharacter:
+        currentState = handleMulCharacter(character, currentState);
+        break;
+      case StateType.ExpectingDoOrDontCharacter:
+        currentState = handleDoOrDontCharacter(character, currentState);
+        break;
+      case StateType.ExpectingDoCharacter:
+        currentState = handleDoCharacter(character, currentState);
+        break;
+      case StateType.ExpectingDontCharacter:
+        currentState = handleDontCharacter(character, currentState);
+        break;
+      case StateType.ExpectingDigitOrComma:
+        currentState = handleDigitOrComma(character, currentState);
+        break;
+      case StateType.ExpectingDigitOrBracket:
+        currentState = handleDigitOrBracket(character, currentState);
+        break;
+    }
+  });
+
+  return currentState.instructions;
+}
 const part2 = (input: string) => {
-  return 'part 2';
+  const instructions = processPartTwo(input);
+  return instructions.map((i) => i.lhs * i.rhs).reduce((lhs, rhs) => lhs + rhs, 0);
 };
 
-const expectedSecondSolution = 'solution 2';
+const expectedSecondSolution = 48;
 
 export { part1, expectedFirstSolution, part2, expectedSecondSolution };
