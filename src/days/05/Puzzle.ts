@@ -35,27 +35,37 @@ const part1 = (input: string) => {
     return result;
 };
 
-function combinations<T>(array: T[]): T[][] {
-    if (array.length == 1) return [array];
-    return array.map((value, index) => {
-        const shortArray = array.slice();
-        shortArray.splice(index, 1);
-        return combinations(shortArray).map(x => x.concat(value).flat());
-    }).flat();
-}
 
 const expectedFirstSolution = 143;
+
+const pertinantRules = (pageOrderingRules: [number, number][], pages: number[]) => {
+    return pageOrderingRules.filter(rule => rule.filter(page => pages.includes(page)).length == 2 )
+}
+
 
 const part2 = (input: string) => {
     const { pageOrderingRules, pagesToProduce } = parseInput(input);
     const brokenPagesToProduce = pagesToProduce.filter(x => !isInOrder(x, pageOrderingRules));
 
-    const result = brokenPagesToProduce.map(brokenPageOrder => {
-        return combinations(brokenPageOrder).filter(x => isInOrder(x, pageOrderingRules))[0];
-    })
-    
-    return result.map((x) => x[(x.length - 1) / 2])
-        .reduce((lhs, rhs) => lhs + rhs, 0);
+    const result = brokenPagesToProduce.map(list => {
+        const rules =  pertinantRules(pageOrderingRules, list);
+        return list.find(item => {
+            const [before, after] = [rules.filter(rule => (rule[0] == item)).length, rules.filter(rule => rule[1] == item).length]
+
+            // if an equal number of numbers go before and after this number, then this is the middle one
+            if (before === after) return true;
+
+            // if there are the same number of numbers with an unspecified ordering as there are specified
+            // then there is an arragement where this is the middle number
+
+            const specifiedNumberOfNumbers = before + after
+            if (list.length - specifiedNumberOfNumbers == specifiedNumberOfNumbers) return true;
+
+            return false;
+        });
+    });
+
+    return result.reduce((a, b) => a + b, 0);
 };
 
 const expectedSecondSolution = 123;
