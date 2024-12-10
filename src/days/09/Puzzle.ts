@@ -95,7 +95,6 @@ const part2 = (input: string) => {
         currentBlock.position = a.position + a.length;
         blocks.splice(blocks.indexOf(a) + 1, 0, currentBlock);
     }
-    console.log(blocks);
     return checksum(blocks);
 };
 

@@ -10,6 +10,8 @@ export default tseslint.config({
   },
   rules: {
     ...vitest.configs.recommended.rules,
+    "no-constant-condition": ["error", { "checkLoops": "allExceptWhileTrue" }],
+    "no-unnecessary-condition": ["error", {"allowConstantLoopConditions": true }],
   },
   settings: {
     vitest: {

@@ -99,15 +99,12 @@ const expectedFirstSolution = 41;
 const part2 = (input: string) => {
     const { obstructions, position: start_position, bounds } = parseInput(input);
     const { positions, collisions } = tracePathP2(obstructions, start_position, bounds);
-    console.log(positions);
     const potential_positions: [Point, Point][] = []; // position & heading
 
     collisions.forEach(([collision_heading, obstruction, index]) => {
-        // console.log(`Checking collision: ${collision_heading}: ${obstruction}`);
 
         let check: (position: Point, path_heading: Point) => boolean;
         const needed_path_heading = rotateAnticlockwise(collision_heading) as Point;
-        // console.log(`Needed path heading: ${needed_path_heading}`);
 
         if (areEqual(collision_heading, Up)) { // collision heading upwards
             check = ( position, path_heading ) =>
@@ -124,15 +121,12 @@ const part2 = (input: string) => {
         }
 
         positions.slice(index).forEach(([position, path_heading]) => {
-            // console.log(`Checking position: ${position}, heading: ${path_heading}`);        
             if (check(position, path_heading)) {
-                // console.log("success!")
                 potential_positions.push([position, path_heading]);
             }
         });
     });
     
-    // console.log(potential_positions);
     return potential_positions.length;
 };
 
