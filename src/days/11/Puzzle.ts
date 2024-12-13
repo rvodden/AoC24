@@ -52,6 +52,6 @@ const part2 = (input: string) => {
     return stones.map(stone => blinkNTimes(stone, 75)).reduce((lhs, rhs) => lhs + rhs);
 };
 
-const expectedSecondSolution = 'part 2';
+const expectedSecondSolution = 65601038650482;
 
 export { part1, expectedFirstSolution, part2, expectedSecondSolution };

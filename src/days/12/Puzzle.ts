@@ -27,20 +27,21 @@ const coalesce = (
     region: [string, number, number],
     visited: boolean[][],
     regions: [string, number, number][][],
-    indent: number = 0
+    indent: number = 0,
 ) => {
     if (visited[y][x]) return { region, visited };
+    visited[y][x] = true;
 
     neighbours
         .map((func) => func([x, y]))
         .filter(([x, y]) => regions[y] && regions[y][x] && regions[y][x][0] === region[0])
-        .forEach(([x, y]) => {
-            visited[y][x] = true;
-            console.log("    ".repeat(indent), x, y);
-            ({ region, visited } = coalesce([x, y], region, visited, regions, indent + 1));
-            region[1] += regions[y][x][1];
-            region[2] += regions[y][x][2];
-        });
+        .map(([x, y]) => {
+            let newRegion;
+            ({ region: newRegion, visited } = coalesce([x, y], regions[y][x], visited, regions, indent + 1));
+            console.log('    '.repeat(indent), newRegion);
+            return newRegion;
+        })
+        .reduce((r1, r2) => [r1[0], r1[1] + r2[1], r1[2] + r2[2]], [region[0], 0, 0]);
     return { region, visited };
 };
 
@@ -58,19 +59,17 @@ const part1 = (input: string) => {
     const regions = [];
 
     grid.filter((line, y) =>
-        line.filter(
-            (plot, x) => {
-                visited[y][x] = true;
-                let region;
-                ({ region, visited } = coalesce([x, y], plots[y][x], visited, plots));
-                regions.push(region);
-            }
-        ),
+        line.filter((plot, x) => {
+            let region;
+            ({ region, visited } = coalesce([x, y], plots[y][x], visited, plots));
+            console.log('New Region: ', region);
+            regions.push(region);
+        }),
     );
 
     console.log(inspect(regions));
 
-    return 1930;
+    return regions.map(([_, perimeter, cost]) => perimeter * cost).reduce((lhs, rhs) => lhs + rhs);
 };
 
 const expectedFirstSolution = 1930;
