@@ -1,4 +1,5 @@
-import { StringifyOptions } from "querystring";
+const zip = <T1, T2>(a: T1[], b: T2[]): [T1, T2][] => a.map((k, i) => [k, b[i]]);
+
 
 const parseInput = (input: string) => {
     const [registerInitiation, programText] = input.split('\n\n');
@@ -22,20 +23,6 @@ const parseInput = (input: string) => {
 
     return { registers, program: program };
 };
-
-function* pairwise<T>(iterable: Iterable<T>): Generator<[T, T], void> {
-    const iterator = iterable[Symbol.iterator]();
-    let a = iterator.next();
-    if (a.done) {
-        return;
-    }
-    let b = iterator.next();
-    while (!b.done) {
-        yield [a.value, b.value];
-        a = b;
-        b = iterator.next();
-    }
-}
 
 enum OpCode {
     ADV,
@@ -86,7 +73,7 @@ const instruction = new Map<OpCode, Instruction>([
         OpCode.BST,
         (registers, operand) => {
             operand = getComboOperand(registers, operand);
-            registers.set("B", operand % 8);
+            registers.set("B", (operand % 8) & 7);
             registers.set("PC", registers.get("PC")! + 1);
             return { registers };
         },
@@ -144,29 +131,50 @@ const run = (registers: Map<string, number>, program: number[][]): number[] => {
     let opCode: OpCode, operand: number;
     while( program.length > registers.get("PC")! ) {
         [opCode, operand] = program[registers.get("PC")!];
-        console.log(opCode, operand)
         let newOutput;
         ({registers, output: newOutput} = instruction.get(opCode)!(registers, operand))
-        console.log(registers)
-        console.log(newOutput)
 
         if(newOutput !== undefined) output.push(newOutput);
-        console.log(output)
     }
 
     return output;
 } 
 
 const part1 = (input: string) => {
-    let {registers, program} = parseInput(input);
-
-    run(registers, program).join(",");
+    const {registers, program} = parseInput(input);
+    return run(registers, program).join(",");
 };
 
 const expectedFirstSolution = '4,6,3,5,6,3,5,2,1,0';
 
+const equalLists = <T>(list1: T[], list2: T[]) => zip(list1, list2.flat()).some(([a, b]) => a != b)
+
 const part2 = (input: string) => {
-    return 'part 2';
+    const {registers, program} = parseInput(input);
+    
+    const B = registers.get("B")!;
+    const C = registers.get("C")!;
+    const PC = registers.get("PC")!;
+
+    const values = [[0]]
+
+    for( let i = 1; i <= 8; i++) {
+        values[i] = [];
+        for( let f = 2**3; f < 2**6 -1; f++ ) {
+            for (const g of values[i - 1]) {
+                const candidate = f + 2**g;
+                registers.set("A", candidate);
+                registers.set("B", B);
+                registers.set("C", C);
+                registers.set("PC", PC);
+                const outputs = run(registers, program);
+                if(equalLists(outputs, program.flat().slice(-2*i, -1))) values[i].push(candidate);
+            }
+        }
+    }
+
+    return Math.min(...values[8]);
+
 };
 
 const expectedSecondSolution = 'part 2';
