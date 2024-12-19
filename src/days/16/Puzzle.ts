@@ -51,29 +51,39 @@ const parseInput = (input: string) => {
 };
 
 const rotateClockwise = (position: Position): Position => {
+    position = structuredClone(position)
     switch (position.heading) {
         case "NORTH":
             position.heading = "EAST";
+            break;
         case "EAST":
             position.heading = "SOUTH";
+            break;
         case "SOUTH":
             position.heading = "WEST";
+            break;
         case "WEST":
             position.heading = "NORTH";
+            break;
     }
     return position;
 };
 
 const rotateAntiClockwise = (position: Position): Position => {
+    position = structuredClone(position)
     switch (position.heading) {
         case "NORTH":
             position.heading = "WEST";
+            break;
         case "EAST":
             position.heading = "NORTH";
+            break;
         case "SOUTH":
             position.heading = "EAST";
+            break;
         case "WEST":
             position.heading = "SOUTH";
+            break;
     }
     return position;
 };
@@ -84,42 +94,55 @@ const moveForward = (position: Position) => {
 };
 
 const nextPositions = (position: Position, paths: Point[]): {position: Position, cost: number}[] => [
-        {position: moveForward(position), cost: 1},
-        {position: rotateClockwise(position), cost: 1000},
-        {position: rotateAntiClockwise(position), cost: 1000},
-    ].filter(pos => paths.find(path => equal(pos.position.location, path)));
+        {position: moveForward(structuredClone(position)), cost: 1},
+        {position: rotateClockwise(structuredClone(position)), cost: 1000},
+        {position: rotateAntiClockwise(structuredClone(position)), cost: 1000},
+    ]
+    .filter(pos => paths.find(path => equal(pos.position.location, path)  ));
 
 const part1 = (input: string) => {
-    console.log("Your mum!")
     const { position, exit, paths } = parseInput(input);
 
     const exits = [{location: exit, heading: "NORTH"}, {location: exit, heading: "EAST"}].map(positionId)
-
-    const queue = paths.flatMap(path =>
-        ["NORTH", "SOUTH", "EAST", "WEST"].map(dir => ({location: path, heading: dir }))
-    ).map(positionId);
+    const queue: string[] = [positionId(position)];
 
     const distances = new Map<string, number>();
     distances.set(positionId(position), 0);
     
     const predecessors = new Map<string, string>();
+    const getDistance = (pid: string): number => distances.has(pid) ? distances.get(pid)! : Infinity;
 
-    const getDistance = (pid: string): number => distances.get(pid) != undefined ? distances.get(pid) : Infinity;
-
+    // console.log(nextPositions({location: [1,1], heading: "NORTH"}, paths))
+    console.log(nextPositions({location: [1,1], heading: "NORTH"}, paths))
+    
     while(queue.length != 0) {
-        const curr = queue.reduce((min, val) => getDistance(min) > getDistance(val) ? val : min);
-        queue.splice(queue.indexOf(curr), 1);
+        // process.stdout.write(queue.length.toString() + "\n");
+         
+        // get queue member with shortest distance
+        const currId = queue.reduce((min, val) => getDistance(min) > getDistance(val) ? val : min);
 
-        nextPositions(getPosition(curr), paths).forEach(({position, cost}) => {
-            const alt = getDistance(curr) + cost;
-            if (alt < getDistance(positionId(position))) {
-                distances.set(positionId(position), alt);
-                predecessors.set(positionId(position), curr);
+        // remove from queue
+        queue.splice(queue.indexOf(currId), 1);
+
+        // if we're at the end, then we're done.
+        if(exits.includes(currId)) break;
+        const distance = getDistance(currId);
+
+        // console.log(currId, distance);
+
+        // for each neighbour of current,
+        nextPositions(getPosition(currId), paths).forEach(({position: nextPosition, cost}) => {
+            const nextId = positionId(nextPosition);
+            const alt = distance + cost;
+            if (alt < getDistance(nextId) ) {
+                predecessors.set(nextId, currId);
+                distances.set(nextId, alt);
+                if(!queue.includes(nextId)) queue.push(nextId);
             }
         })
     }
-
-    console.log("Done!");
+    
+    return exits.map(e => getDistance(e))
 };
 
 const expectedFirstSolution = 11048;
