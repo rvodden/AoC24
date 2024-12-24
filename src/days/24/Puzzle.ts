@@ -2,90 +2,150 @@ type Operation = { (vals: boolean[]): boolean };
 
 interface Node {
     inputs: string[];
-    operation: Operation;
+    operation: string;
 }
+
+type Graph = Map<string, Node>;
+
+const zip = <T1, T2>(a: T1[], b: T2[]): [T1, T2][] => a.map((k, i) => [k, b[i]]);
+const combinations = <T>(array: T[]): [T, T][] =>
+    array.flatMap((v, i) => array.slice(i + 1).map((w) => [v, w] as [T, T]));
 
 const operations = new Map<string, Operation>([
     ['OR', (vals) => vals[0] || vals[1]],
     ['AND', (vals) => vals[0] && vals[1]],
     ['XOR', (vals) => vals[0] !== vals[1]],
+    ['TRUE', (_) => true],
+    ['FALSE', (_) => false],
 ]);
 
 const parseInput = (input: string) => {
     const [inputText, wiringText] = input.split('\n\n');
 
-    const wiring = new Map<string, Node>(
+    const wiring = new Map(
         wiringText
             .split('\n')
             .filter((x) => x != '')
             .map((line) => {
                 const elems = line.split(' ');
-                return [elems[4], { inputs: [elems[0], elems[2]], operation: operations.get(elems[1])! }];
+                return [elems[4], { inputs: [elems[0], elems[2]], operation: elems[1] }];
             }),
     );
 
     inputText.split('\n').forEach((line) => {
         const input = line.split(': ');
-        if (input[1] === '1') wiring.set(input[0], { inputs: [], operation: (_) => true });
-        if (input[1] === '0') wiring.set(input[0], { inputs: [], operation: (_) => false });
+        if (input[1] === '1') wiring.set(input[0], { inputs: [], operation: 'TRUE' });
+        if (input[1] === '0') wiring.set(input[0], { inputs: [], operation: 'FALSE' });
     });
 
     return wiring;
 };
 
-const topologicalSort = (wiring: Map<string, Node>): string[] => {
-    wiring = new Map(wiring);
+const evaluate = (nodeName: string, wiring: Graph): boolean => {
+    let node = wiring.get(nodeName)!;
+    if (node.inputs.length === 0) return operations.get(node.operation)!([]);
 
-    const removeNode = (nodeName: string) => {
-        wiring.delete(nodeName);
-        wiring.entries().forEach(([name, node]) => {
-            const idx = node.inputs.indexOf(nodeName);
-            if (idx !== -1) {
-                node.inputs.splice(idx, 1);
-            }
-        });
-    };
-    const result = [];
+    // // copy the wiring so we don't mess everything up
+    // wiring = new Map([...wiring].map(([name, node]) => [name, {inputs: node.inputs.slice(), operation: node.operation}]));
 
-    while (wiring.size > 0) {
-        const [nodeName, _] = wiring.entries().find(([name, node]) => node.inputs.length === 0)!;
-        result.push(nodeName);
-        removeNode(nodeName);
-    }
-
-    return result;
-};
-
-const evaluate = (nodeName: string, wiring: Map<string, Node>): boolean => {
-    const node = wiring.get(nodeName)!;
-
-    if (node.inputs.length === 0) return node.operation([]);
-
+    // // get the copied node
+    // node = wiring.get(nodeName)!;
     const inputs = node.inputs.map((node) => evaluate(node, wiring));
-    const value = node.operation(inputs);
+    const value = operations.get(node.operation)!(inputs);
     node.inputs = [];
-    node.operation = (_) => value;
+    node.operation = value ? 'TRUE' : 'FALSE';
     return value;
 };
+
+const convertToDecimal = (nodes: string[], wiring: Graph): number =>
+    [...nodes.map((nodeName) => [nodeName, evaluate(nodeName, wiring)] as [string, boolean])]
+        .sort((lhs, rhs) => lhs[0].localeCompare(rhs[0]))
+        .map(([name, val], idx) => (val ? 2 ** idx : undefined))
+        .filter((x) => x !== undefined)
+        .reduce((lhs, rhs) => lhs + rhs);
+
+const getDecimalValueOfNodesStartingWith = (c: string, wiring: Graph): number =>
+    convertToDecimal([...wiring.keys().filter((node) => node[0] === c)], wiring);
 
 const part1 = (input: string): number => {
     const wiring = parseInput(input);
     // const order = topologicalSort(wiring);
 
-    const outputs = [
-        ...wiring
-            .keys()
-            .filter((node) => node[0] === 'z')
-            .map((nodeName) => [nodeName, evaluate(nodeName, wiring)] as [string, boolean]),
-    ].sort((lhs, rhs) => lhs[0].localeCompare(rhs[0]));
-
-    return outputs.map(([name, val], idx) => val ? 2 ** idx : undefined).filter(x => x !== undefined).reduce((lhs, rhs) => lhs + rhs);
+    return getDecimalValueOfNodesStartingWith('z', wiring);
 };
 
 const expectedFirstSolution = 2024;
 
+
 const part2 = (input: string) => {
-    return 'part 2';
+    const wiring = parseInput(input);
+    const swaps = new Set<string>();
+
+    const getNodeName = (inputs: string[], operation: string): string | undefined => {
+        const entry = wiring.entries()
+            .find(([_, node]) => node.operation === operation && inputs.every((input) => node.inputs.includes(input)))
+        return entry ? entry[0] : undefined;
+    }
+    
+    const swap = (lhs: string, rhs: string) => {
+        const temp = wiring.get(lhs);
+        wiring.set(lhs, wiring.get(rhs)!);
+        wiring.set(rhs, temp!);
+        swaps.add(lhs) 
+        swaps.add(rhs)
+    }
+
+    let carryIn: string | undefined = undefined;
+    let carryOut: string | undefined = undefined;
+
+    for (const number of Array(45).keys()) {
+        const label = number.toString().padStart(2, '0');
+
+        // *** half adder ***
+        // x__ XOR y__ -> node0
+        // x__ AND y__ -> node1
+        // carryIn AND node0 -> node2
+        // carryIn XOR node0 -> output
+        // node1 OR node2 -> carry1
+        let node0 = getNodeName(['x' + label, 'y' + label], 'XOR')!;
+        let node1 = getNodeName(['x' + label, 'y' + label], 'AND')!;
+        let output: string;
+
+        if(carryIn !== undefined) {
+            let node2 = getNodeName([carryIn, node0], "AND");
+            if(node2 === undefined) {
+                swap(node0, node1);
+                [node0, node1] = [node1, node0];
+                node2 = getNodeName([carryIn, node0], "AND")!
+            }
+
+            output = getNodeName([carryIn, node0], "XOR")!;
+            if(node0?.startsWith('z')) {
+                swap(node0, output!);
+                [output, node0] = [node0, output]
+            }
+            if(node1?.startsWith('z')) {
+                swap(node1, output!);
+                [output, node1] = [node1, output]
+            }
+            if(node2?.startsWith('z')) {
+                swap(node2, output!);
+                [output, node2] = [node2, output]
+            }
+
+            carryOut = getNodeName([node1, node2], "OR");
+        }
+
+        if(carryOut?.startsWith("z") && carryOut != "z45") {
+            swap(carryOut, output!);
+            [carryOut, output] = [output, carryOut];
+        }
+
+        if (carryIn) carryIn = carryOut;
+        else carryIn = node1;
+    }
+
+    return [...swaps].sort().join(",");
 };
 
 const expectedSecondSolution = 'part 2';
