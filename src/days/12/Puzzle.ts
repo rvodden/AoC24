@@ -1,6 +1,16 @@
 import { inspect } from 'util';
 
 type Point = [number, number];
+const areEqual = ([x1, y1]: Point, [x2, y2]: Point): boolean => x1 === x2 && y1 === y2;
+
+class OutOfBoundsError extends Error {
+    constructor(message: string) {
+        super(message); 
+        this.name = "OutOfBoundsError"; 
+        
+        Object.setPrototypeOf(this, OutOfBoundsError.prototype);
+    }
+}
 
 /**
  * Disjoint Set data structure for two-dimensional grid. 
@@ -18,15 +28,20 @@ class GridDisjointSet {
     protected nodes: {
         parent: number,
         size: number,
+        members: Set<number>,
     }[];
+
+    protected _roots: Set<number> = new Set();
 
     constructor(public readonly dimensions: Point) 
     {
         this.nodes = new Array(this.size).fill(0).map((_, i) => ({
             parent: i,
             size: 1,
-            rank: 0
+            members: new Set([i])
         }));
+
+        this._roots = new Set(this.nodes.map((_, i) => i));
     }
 
     /**
@@ -67,11 +82,18 @@ class GridDisjointSet {
             [root1, root2] = [root2, root1]; // and that root1 is the larger set
         }
 
-        
         // make the root of the second set a child of the root of the first set
         this.nodes[root2].parent = root1;
         // update the size of the first set
         this.nodes[root1].size += this.nodes[root2].size;
+        this.nodes[root1].members = this.nodes[root1].members.union(this.nodes[root2].members);
+
+        // remove the second root from the set of roots
+        this._roots.delete(root2);
+    }
+
+    flatten = () => {
+        this.roots.forEach((p) => this.find(p))
     }
 
     /**
@@ -95,13 +117,40 @@ class GridDisjointSet {
         return this.dimensions[0] * this.dimensions[1];
     }
 
+    get roots(): Point[] {
+        const width = this.width
+        const height = this.height
+        const retval: Point[] = []
+
+        this._roots.forEach(p => {
+            retval.push(this.getCoordinates(p))
+        })
+
+        return retval;
+    }
+
+    get regions(): Map<number, Set<Point>> {
+        const regions: Map<number, Set<Point>> = new Map();
+        this._roots.forEach((root) => {
+            const rootPoint = this.getCoordinates(root);
+            if (!regions.has(root)) {
+                regions.set(root, new Set());
+            }
+            // regions.get(root)?.add(rootPoint);
+            this.nodes[root].members.forEach(member => {
+                regions.get(root)?.add(this.getCoordinates(member));
+            });
+        });
+        return regions;
+    }
+
     private inBounds([x, y]: Point): boolean {
         return x >= 0 && x < this.dimensions[0] && y >= 0 && y < this.dimensions[1];
     }
 
     private throweIfOutOfBounds(p: Point): void {
         if (!this.inBounds(p)) {
-            throw new Error(`Point ${inspect(p)} is out of bounds for grid with dimensions ${inspect(this.dimensions)}`);
+            throw new OutOfBoundsError(`Point ${inspect(p)} is out of bounds for grid with dimensions ${inspect(this.dimensions)}`);
         }
     }
 
@@ -112,7 +161,7 @@ class GridDisjointSet {
 
     private getCoordinates(index: number): Point {
         if (index < 0 || index >= this.size) {
-            throw new Error(`Index ${index} is out of bounds for grid with dimensions ${inspect(this.dimensions)}`);
+            throw new OutOfBoundsError(`Index ${index} is out of bounds for grid with dimensions ${inspect(this.dimensions)}`);
         }
         return [index % this.dimensions[0], Math.floor(index / this.dimensions[0])];
     }
@@ -137,42 +186,130 @@ const neighbours: { ([x, y]: [number, number]): [number, number] }[] = [
     ([x, y]) => [x, y + 1]
 ];
 
-type Region = {
-    plant: string,
-    perimeter?: number,
-    area?: number
+const inBounds = ([x, y]: Point, grid: string[][]) => 0 <= x && 0 <= y && y < grid.length && y < grid[0].length
+
+const calculatePerimeter = (region: Point[]): number => {
+    let perimeter = 0;
+    region.forEach(p1 => {
+        neighbours.forEach((neighbour) => {
+            const n = neighbour(p1);
+            if (region.find((p2) => areEqual(p2, n)) === undefined) {
+                perimeter++;
+            }
+        });
+    });
+    return perimeter;
 }
 
-const inBounds = (point: [number, number], bounds: [number, number]): Boolean => 
-    (0 <= point[0] && point[0] < bounds[0] && 0 <= point[1] && point[1] < bounds[1]);
-
-
-
 const part1 = (input: string) => {
-    let grid: string[][] = parseInput(input);
-    let bounds: [number, number] = [grid[0].length, grid.length]
- 
-    let plotGrid: Plot[][] = grid.map(row => row.map(p => ({plant: p, perimeter: 0, area: 1}) ));
+    const grid: string[][] = parseInput(input);
+    const gds = new GridDisjointSet([grid[0].length, grid.length])
 
-    let region: Region = {
-        plant: "A", perimiter: 1, area: 1
-    };
+    // First Pass
+    grid.forEach((row, y, grid) => {
+        row.forEach((plant, x, row) => {
+            const cell: Point  = [x,y]
+            
+            const west = neighbours[WEST]([x,y])
+            if( inBounds(west, grid) && grid[west[1]][west[0]] === plant ) {
+                gds.unite(west, cell)
+            }
 
-    regionMap.set(2, region);
-    region.area = 3;
-    regionMap.set(3, region);
-    console.log(regionMap.get(2));
-    console.log(regionMap.get(3));
+            const north = neighbours[NORTH]([x,y])
+            if( inBounds(north, grid) && grid[north[1]][north[0]] === plant ) {
+                gds.unite(north, cell)
+            }
+        })
+    })
 
-    return 1930;
+    // Second Pass
+    gds.flatten();
+
+    const regions = gds.regions;
+
+
+    const price = [...regions].map(([_, region]) => {
+        const perimeter = calculatePerimeter([...region]);
+        const plant = grid[region.values().next().value[1]][region.values().next().value[0]];
+        return perimeter * region.size
+    }).reduce((acc, val) => acc + val, 0);
+
+    return price;
 };
 
 const expectedFirstSolution = 1930;
 
+const cornerNeighbours: { ([x, y]: Point): Point }[][] = [
+    [  // north west corner
+        ([x, y]) => [x, y - 1],
+        ([x, y]) => [x - 1, y - 1],
+        ([x, y]) => [x - 1, y]
+    ], 
+    [  // north east corner
+        ([x, y]) => [x, y - 1],
+        ([x, y]) => [x + 1, y - 1],
+        ([x, y]) => [x + 1, y]
+    ],
+    [  // south east corner
+        ([x, y]) => [x, y + 1],
+        ([x, y]) => [x + 1, y + 1],
+        ([x, y]) => [x + 1, y]
+    ],
+    [  // south west corner
+        ([x, y]) => [x, y + 1],
+        ([x, y]) => [x - 1, y + 1],
+        ([x, y]) => [x - 1, y]
+    ]
+];
+
+const countCorners = (region: Point[]): number =>
+    region.map(p1 => 
+        cornerNeighbours.map(neighbourFunction =>
+            neighbourFunction.map(n => n(p1))
+                .map(p1 => region.find(p2 => areEqual(p1, p2)) !== undefined)
+        )
+        .map(([c1, c2, c3]) => (!c1 && !c3) || (c1 && !c2 && c3))
+        .filter(x => x).length
+    )
+    .reduce((acc, val) => acc + val, 0);
+
+
 const part2 = (input: string) => {
-    return 'part 2';
+    const grid: string[][] = parseInput(input);
+    const gds = new GridDisjointSet([grid[0].length, grid.length])
+
+    // First Pass
+    grid.forEach((row, y, grid) => {
+        row.forEach((plant, x, row) => {
+            const cell: Point  = [x,y]
+            
+            const west = neighbours[WEST]([x,y])
+            if( inBounds(west, grid) && grid[west[1]][west[0]] === plant ) {
+                gds.unite(west, cell)
+            }
+
+            const north = neighbours[NORTH]([x,y])
+            if( inBounds(north, grid) && grid[north[1]][north[0]] === plant ) {
+                gds.unite(north, cell)
+            }
+        })
+    })
+
+    // Second Pass
+    gds.flatten();
+
+    const regions = gds.regions;
+
+
+    const price = [...regions].map(([_, region]) => {
+        const corners = countCorners([...region]);
+        const plant = grid[region.values().next().value[1]][region.values().next().value[0]];
+        return corners * region.size
+    }).reduce((acc, val) => acc + val, 0);
+
+    return price;
 };
 
-const expectedSecondSolution = 'part 2';
+const expectedSecondSolution = 1206;
 
 export { part1, expectedFirstSolution, part2, expectedSecondSolution };
